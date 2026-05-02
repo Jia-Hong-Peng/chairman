@@ -25,6 +25,20 @@ else
   echo "→ 全新安裝 chairman v$VERSION"
 fi
 
+# 備份現有 SKILL.md（rollback 用）
+BACKUP_FILE="$SKILL_DIR/SKILL.md.bak"
+if [ -f "$SKILL_DIR/SKILL.md" ]; then
+  cp "$SKILL_DIR/SKILL.md" "$BACKUP_FILE"
+fi
+
+# 以 trap 保證失敗時回滾
+_rollback() {
+  echo "⚠️  安裝失敗，正在回滾..."
+  [ -f "$BACKUP_FILE" ] && cp "$BACKUP_FILE" "$SKILL_DIR/SKILL.md" && echo "✓ SKILL.md 已還原至上一版本"
+  exit 1
+}
+trap '_rollback' ERR
+
 # 複製技能主文件
 cp "$REPO_DIR/SKILL.md" "$SKILL_DIR/SKILL.md"
 
@@ -55,9 +69,19 @@ fi
 # 寫入版本標記
 echo "$VERSION" > "$VERSION_FILE"
 
+# 安裝成功，清除 trap 和備份
+trap - ERR
+rm -f "$BACKUP_FILE"
+
 echo "✓ 技能主文件：$SKILL_DIR/SKILL.md"
 if [ "$IS_UPDATE" = "true" ]; then
   echo "✓ 更新完成 v$VERSION — 重新啟動 Claude Code 後生效（~/.ptd/ 公司資料未異動）"
+  echo ""
+  echo "📋 升級提示：若現有公司在 v5.9.0 前建立，建議補建以下新增檔案："
+  echo "   • teams/team-NNN/members/（4 個成員記憶檔）"
+  echo "   • teams/team-NNN/regulations.md"
+  echo "   • teams/team-NNN/skillset.md"
+  echo "   方法：進入 /chairman 後，CEO 可為每個舊部門手動觸發 A7.5 + A7.6 補建。"
 else
   echo "✓ 安裝完成 v$VERSION — 重新啟動 Claude Code 後輸入 /chairman 即可使用"
 fi
