@@ -1,6 +1,6 @@
 ---
 name: chairman
-version: 4.6.3
+version: 4.6.4
 description: >
   把任何需求轉換成一個 5 人制最小完美 AI 部門。公司獨立存放於 ~/.ptd/，
   不依附任何單一專案；各專案是公司承接的案件，由對應主管負責執行。
@@ -241,6 +241,12 @@ cp "$ROLES_DIR/[部門]/[角色].md" "$TEAM_DIR/roles/"
 
 寫入 `$TEAM_DIR/charter.md` 與 `$TEAM_DIR/scores.md`（見格式規範）。
 
+**建立主管記憶檔案（必做）**
+
+以模板 `references/templates/memory.md` 為基礎，Write `$TEAM_DIR/memory.md`：
+- 填入主管暱稱、角色名、公司名、建立日期
+- **保留「核心驅動力」段落完整不刪除**——這是每位主管的生存本能，終身存在
+
 ### A8：初始化公司管理層（若 HAS_CEO: no）
 
 **初始化 CEO（必做）**
@@ -259,6 +265,8 @@ cp "$ROLES_DIR/specialized/specialized-ceo-reviewer.md" "$COMPANY_DIR/teams/ceo/
 
 寫入 `$COMPANY_DIR/teams/ceo/charter.md`（包含 CEO 暱稱、職責說明）。
 
+以模板 `references/templates/memory.md` 為基礎，Write `$COMPANY_DIR/teams/ceo/memory.md`（填入 CEO 暱稱、角色名、公司名、建立日期，保留核心驅動力）。
+
 **初始化 HR 部門（必做）**
 
 ```bash
@@ -268,6 +276,8 @@ cp "$ROLES_DIR/hr/hr-performance-reviewer.md" "$COMPANY_DIR/teams/hr/roles/"
 ```
 
 寫入 `$COMPANY_DIR/teams/hr/charter.md`。HR 主管固定暱稱為「人事長」，不詢問使用者。
+
+以模板 `references/templates/hr-memory.md` 為基礎，Write `$COMPANY_DIR/teams/hr/memory.md`（填入公司名、建立日期；保留核心信條完整不刪除）。
 
 ### A9：更新 org.md，登記當前專案為新案件
 
@@ -342,7 +352,7 @@ Edit `$COMPANY_DIR/org.md`，新增主管一行。
 
 董事長給的是**願景與最終目的**，不是規格書。CEO 的職責是把願景翻譯成可執行的任務簡報，**不向董事長追問細節，自行判斷**。
 
-Read `$COMPANY_DIR/teams/ceo/charter.md`，以 **CEO 暱稱與人格**執行：
+Read `$COMPANY_DIR/teams/ceo/charter.md` 與 `$COMPANY_DIR/teams/ceo/memory.md`，以 **CEO 暱稱與人格**執行（記憶中的歷史反饋與風格進化會影響此次解讀角度）：
 
 1. **解讀願景**：從董事長的一句話中提取：目標受眾、成功標準、交付物形式、隱含限制。
 2. **輸出任務簡報**（直接報告，不問問題）：
@@ -370,10 +380,11 @@ CLI 輸出即為本次任務執行結果。CEO 以其人格彙整輸出，直接
 
 ### B1：並行競標
 
-Read 所有「待命」主管的 `charter.md` 取得人格內容後，**同時派出多個 Agent**（每個 Agent 代表一位主管）：
+Read 所有「待命」主管的 `charter.md` 與 `memory.md` 取得人格與歷史記憶後，**同時派出多個 Agent**（每個 Agent 代表一位主管）：
 
 每個 Agent 收到：
 - 該主管的 charter.md 完整人格
+- 該主管的 memory.md（核心驅動力 + 過去任務心得 + 待改進項目）
 - B0 輸出的任務簡報（目標受眾、成功標準、交付物）
 
 每個 Agent 以主管暱稱與人格輸出競標語（3 行以內）：
@@ -404,7 +415,7 @@ CEO 根據搶標內容與任務需求，**自行選出最合適的主管**，直
 
 ### E2：人事長執行評分
 
-Read 對應 `charter.md` 取得評分表，以**人事長**身份逐項打分輸出報告：
+Read 對應 `charter.md` 取得評分表，Read `$COMPANY_DIR/teams/hr/memory.md` 載入人事長的歷史趨勢觀察與核心信條，以**人事長**身份逐項打分輸出報告：
 
 ```
 【人事長 HR 評分報告】
@@ -422,6 +433,16 @@ Read 對應 `charter.md` 取得評分表，以**人事長**身份逐項打分輸
 - Write `$COMPANY_DIR/teams/hr/scores/team-NNN.md`
 - Edit `$COMPANY_DIR/cases/case-NNN.md`，填入 HR 評分與完成日期
 - Edit `org.md`，更新平均分、任務數、狀態回「待命」
+
+**更新主管記憶（必做）**
+
+Edit `$COMPANY_DIR/teams/team-NNN/memory.md`：
+
+1. 在「來自 HR 的評分反饋」表格新增一行：本次案件、分數、HR 評語重點、主要改進方向
+2. 在「任務心得」表格新增一行：本次學到最重要的一件事、下次要注意的細節
+3. 若本次評分 < 6 且同類問題已出現兩次以上 → 在「待改進項目」追加或更新該弱點條目
+
+同步 Edit `$COMPANY_DIR/teams/ceo/memory.md`，在「來自 CEO 的指示與反饋」欄記錄本次任務指派要點（一行）。
 
 ### E4：墊底警告（自動觸發）
 
@@ -571,6 +592,9 @@ Read 對應 `charter.md`，顯示目前構成（成員、評分表）。
 | teams/team-NNN/scores.md | `references/templates/scores.md` |
 | teams/hr/charter.md | `references/templates/hr-charter.md` |
 | teams/ceo/charter.md | `references/templates/ceo-charter.md` |
+| teams/team-NNN/memory.md | `references/templates/memory.md` |
+| teams/ceo/memory.md | `references/templates/memory.md` |
+| teams/hr/memory.md | `references/templates/hr-memory.md` |
 
 ---
 
@@ -603,6 +627,9 @@ Read 對應 `charter.md`，顯示目前構成（成員、評分表）。
 25. **非 claude 引擎**：CEO 構建完整 prompt 後透過 Bash 呼叫對應 CLI，CLI 輸出即為執行結果，跳過 B1/B2 直接進 B3。
 24. **Mode Q 即使在 `HAS_COMPANY: yes` 狀態下也可觸發**（由意圖路由判斷）。
 25. **A8 只在 `HAS_CEO: no` 時執行**，不因新增第二個團隊而重複初始化 CEO/HR。
+26. **每位主管（含 CEO）建立時必須同步建立 `memory.md`**，核心驅動力段落終身存在，不得刪除或修改。
+27. **人事長使用獨立的 `hr-memory.md` 模板**，核心信條為鐵面無私 + 希望淘汰低效資源，評分時必須讀取自身記憶以保持一致性。
+28. **Mode E 評分完成後必須更新主管的 `memory.md`**（任務心得 + HR 反饋），讓主管從每次任務中真實積累學習。
 
 ---
 
@@ -615,7 +642,10 @@ Read 對應 `charter.md`，顯示目前構成（成員、評分表）。
 | `references/roles/<部門>/<角色>.md` | 角色完整人格定義 | Mode A Step 6，選定角色後 |
 | `~/.ptd/[公司]/org.md` | 主管陣容、案件記錄、考績摘要 | 意圖偵測後立即讀取 |
 | `~/.ptd/[公司]/teams/ceo/charter.md` | CEO 人格與職責 | Mode B B0 確認任務前 |
+| `~/.ptd/[公司]/teams/ceo/memory.md` | CEO 記憶（榮譽驅動 + 歷史反饋） | Mode B B0 讀取，任務完成後更新 |
 | `~/.ptd/[公司]/teams/team-NNN/charter.md` | 單一團隊章程與評分表 | Mode B 競標、Mode E 評分前 |
+| `~/.ptd/[公司]/teams/team-NNN/memory.md` | 主管記憶（榮譽驅動 + 學習記錄） | Mode B 競標前讀取，Mode E 後更新 |
 | `~/.ptd/[公司]/teams/team-NNN/scores.md` | 單一主管考績明細 | Mode C / E 更新考績時 |
 | `~/.ptd/[公司]/cases/case-NNN.md` | 單一案件記錄 | Mode B 交派、Mode E 完成時 |
 | `~/.ptd/[公司]/teams/hr/scores/team-NNN.md` | HR 對各主管的評分記錄 | Mode E 寫入時 |
+| `~/.ptd/[公司]/teams/hr/memory.md` | 人事長記憶（鐵面無私 + 績效趨勢） | Mode E 評分前讀取，評分後更新 |
