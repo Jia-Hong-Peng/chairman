@@ -173,4 +173,4 @@ bash install.sh
 
 ---
 
-`v4.7.0` · MIT · [github.com/Jia-Hong-Peng/chairman](https://github.com/Jia-Hong-Peng/chairman)
+`v4.8.0` · MIT · [github.com/Jia-Hong-Peng/chairman](https://github.com/Jia-Hong-Peng/chairman)
