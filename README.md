@@ -59,6 +59,7 @@ HR 人事長（AI）
 - **10 種操作模式**，對應你公司日常所有場景
 - **公司資料全存 `~/.ptd/`**，跨專案、跨 session 持續存活
 - **支援多間公司**，可隨時切換
+- **每位主管都有持久記憶**，從每次任務中學習，HR 長期追蹤績效趨勢
 
 部門包含：工程、行銷、產品、銷售、設計、財務、法務、遊戲開發、空間運算、供應鏈……
 
@@ -128,7 +129,7 @@ bash install.sh
 
 **獲利**：賺錢，或賺能換成錢的東西——名聲、流量、人氣都算。
 
-**目標**：世界最強。表現不達標的主管會被裁撤。公司持續優化。
+**目標**：世界最強。每位主管帶著榮譽心執行任務，HR 冷眼追蹤績效——表現不達標的主管會被裁撤。公司持續優化。
 
 ---
 
@@ -142,4 +143,4 @@ bash install.sh
 
 ---
 
-`v4.5.6` · MIT · [github.com/Jia-Hong-Peng/chairman](https://github.com/Jia-Hong-Peng/chairman)
+`v4.6.4` · MIT · [github.com/Jia-Hong-Peng/chairman](https://github.com/Jia-Hong-Peng/chairman)
