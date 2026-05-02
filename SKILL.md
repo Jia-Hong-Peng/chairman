@@ -1,6 +1,6 @@
 ---
 name: chairman
-version: 4.5.4
+version: 4.5.5
 description: >
   把任何需求轉換成一個 5 人制最小完美 AI 部門。公司獨立存放於 ~/.ptd/，
   不依附任何單一專案；各專案是公司承接的案件，由對應主管負責執行。
@@ -52,6 +52,7 @@ SKILL_DIR="$HOME/.claude/skills/chairman"
 if [ -d "$SKILL_DIR/references/roles" ]; then
   echo "ROLES_DIR: $SKILL_DIR/references/roles"
   echo "CATALOG: $SKILL_DIR/references/roles/CATALOG.md"
+  echo "PRINCIPLES: $SKILL_DIR/references/principles.md"
   echo "STATUS: ready"
 else
   echo "STATUS: roles_missing"
@@ -87,6 +88,8 @@ echo "CURRENT_PROJECT: $CURRENT_PROJECT"
 ```
 
 若 `STATUS: roles_missing`：告知使用者執行 `bash install.sh` 後重試，然後**停止**。
+
+若 `STATUS: ready`：Read `PRINCIPLES` 路徑的檔案，將公司行為準則載入為所有 AI 員工的運作基礎。
 
 ---
 
