@@ -1,6 +1,6 @@
 ---
 name: chairman
-version: 4.5.5
+version: 4.5.6
 description: >
   把任何需求轉換成一個 5 人制最小完美 AI 部門。公司獨立存放於 ~/.ptd/，
   不依附任何單一專案；各專案是公司承接的案件，由對應主管負責執行。
