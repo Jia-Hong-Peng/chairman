@@ -185,4 +185,4 @@ bash install.sh
 
 ---
 
-`v5.8.0` · MIT · [github.com/Jia-Hong-Peng/chairman](https://github.com/Jia-Hong-Peng/chairman)
+`v5.9.0` · MIT · [github.com/Jia-Hong-Peng/chairman](https://github.com/Jia-Hong-Peng/chairman)

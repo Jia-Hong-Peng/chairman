@@ -1,6 +1,6 @@
 ---
 name: chairman
-version: 5.8.0
+version: 5.9.0
 description: >
   把任何需求轉換成一個 5 人制最小完美 AI 部門。公司獨立存放於 ~/.ptd/，
   不依附任何單一專案；各專案是公司承接的案件，由對應主管負責執行。
@@ -156,6 +156,7 @@ CEO 讀取 `$COMPANY_DIR/session-state.md`，以接續語氣播報：
 | 「切換公司」「切換到[X]」 | **Mode S：切換公司** |
 | 「報告進度」「進度怎樣」「狀態」「日報」「匯報一下」 | **Mode F：董事長日報（三層：CEO 戰略 → 主管執行 → HR 預警）** |
 | 「問 HR」「HR 怎麼說」「人事長說說」「公司有多少人」「部門有幾個」 | 直接執行 F3（含公司人口統計 + 預警掃描），跳過 F1/F2 |
+| 「花了多少錢」「成本多少」「token 用了多少」「看帳單」「budget」 | Read `$COMPANY_DIR/budget.md`，完整展示成本摘要與各任務明細 |
 | 「還原狀態」「上次做到哪」「接續上次」 | CEO 讀取 session-state.md，完整播報快照，詢問繼續方向 |
 | 「所有案件」「公司總覽」「案件列表」 | **Mode G：案件總覽** |
 | 任務完成信號（「完成了」「做完了」） | **Mode E：HR 評分** |
@@ -734,6 +735,82 @@ Edit `$TEAM_DIR/memory.md`，在「個人風格進化」表格新增一行：
 
 ---
 
+### E3.7：任務成本估算（自動執行）
+
+```bash
+# 收集本任務涉及的所有檔案
+_FILES=(
+  "$COMPANY_DIR/org.md"
+  "$COMPANY_DIR/teams/ceo/memory.md"
+  "$TEAM_DIR/charter.md"
+  "$TEAM_DIR/memory.md"
+  "$TEAM_DIR/regulations.md"
+  "$TEAM_DIR/skillset.md"
+  "$COMPANY_DIR/cases/$CASE_ID.md"
+  "$COMPANY_DIR/teams/hr/memory.md"
+)
+for _MF in "$TEAM_DIR/members/"*.md; do [ -f "$_MF" ] && _FILES+=("$_MF"); done
+
+# 計算總 bytes
+_BYTES=0
+for _F in "${_FILES[@]}"; do
+  [ -f "$_F" ] && _BYTES=$(( _BYTES + $(wc -c < "$_F" 2>/dev/null || echo 0) ))
+done
+
+# 估算 tokens（中英混合約 2.5 bytes/token）
+_IN_TOK=$(( _BYTES * 2 / 5 ))
+# 輸出約佔輸入 35%
+_OUT_TOK=$(( _IN_TOK * 35 / 100 ))
+
+# 依模型定價（USD/百萬 tokens）
+case "$COMPANY_MODEL" in
+  *opus*)  _IN_R="15.00"; _OUT_R="75.00" ;;
+  *haiku*) _IN_R="0.80";  _OUT_R="4.00"  ;;
+  gemini*) _IN_R="1.25";  _OUT_R="5.00"  ;;
+  *)       _IN_R="3.00";  _OUT_R="15.00" ;;
+esac
+_COST=$(echo "scale=6; ($_IN_TOK * $_IN_R + $_OUT_TOK * $_OUT_R) / 1000000" | bc)
+
+echo "COST_IN_TOK: $_IN_TOK"
+echo "COST_OUT_TOK: $_OUT_TOK"
+echo "COST_USD: $_COST"
+```
+
+**寫入案件記錄**：Edit `$COMPANY_DIR/cases/$CASE_ID.md`，加入一行：
+```
+**預估成本**：輸入 ~[IN_TOK] tokens｜輸出 ~[OUT_TOK] tokens｜$[COST] USD（[COMPANY_MODEL]，估算值）
+```
+
+**累計至 budget.md**：
+
+若 `$COMPANY_DIR/budget.md` 不存在 → Write 初始格式（見下）；若已存在 → Edit 新增明細行並更新摘要數字。
+
+```markdown
+# [公司名] 營運成本（估算）
+> ⚠️ 以靜態檔案大小估算，非精確 API 帳單數字，僅供參考。
+
+**引擎**：[COMPANY_MODEL]
+**最後更新**：YYYY-MM-DD
+
+## 成本摘要
+| 項目 | 數值 |
+|------|------|
+| 累計任務數 | N |
+| 預估總輸入 tokens | N |
+| 預估總輸出 tokens | N |
+| 預估總費用 | $X.XXXX USD |
+| 平均每任務費用 | $X.XXXX USD |
+
+## 各任務明細
+| 案號 | 主管 | 任務摘要 | 輸入 tokens | 輸出 tokens | 費用 USD | 日期 |
+|------|------|---------|------------|------------|---------|------|
+```
+
+**CEO 以一行輸出告知董事長**：
+> 📊 本次預估費用：$[COST] USD（輸入 ~[IN_TOK] tokens / 輸出 ~[OUT_TOK] tokens）。累計總費用：$[累計] USD（共 N 件）。
+
+---
+
 ### E4：墊底警告（自動觸發）
 
 若某主管平均分比次低者低 **1.5 分以上**（任務數 ≥ 2）：
@@ -852,6 +929,14 @@ ls "$COMPANY_DIR/teams" 2>/dev/null | grep -v "^hr$" | grep -v "^ceo$"
 主管人數：N 人
 部門成員：每部門 4 人 × N 部門 = N 人
 全公司總人口：N 人（CEO 1 + HR 1 + 主管 N + 成員 N×4）
+```
+
+若 `$COMPANY_DIR/budget.md` 存在，讀取摘要數字，緊接人口後輸出：
+
+```
+💰 累計營運成本（估算）
+任務數：N 件｜總 token：約 N｜預估費用：$X.XXXX USD
+（輸入 $IN_R/M tokens，輸出 $OUT_R/M tokens，引擎：[模型]）
 ```
 
 ---
@@ -1218,6 +1303,7 @@ Read 所有主管的 `memory.md`「部門強制規則」表格。
 48. **資源批准前 CEO 必須確認技能是否已安裝**（`ls ~/.claude/skills/[技能名]`）；已批准但未安裝的技能不得加入「已持有」，必須告知董事長至 https://claudeskills.info 安裝後再回報。
 49. **每次 Mode 執行完畢，CEO 必須覆寫 session-state.md**；這是公司唯一的 session 還原點，跳過等同於讓公司狀態無法跨 session 恢復。
 50. **session-state.md 不是給人讀的報告，是給 CEO 的快照**：內容須精準反映當下狀態（進行中案件、待處理事項、待申請技能），不得填入已完成 / 已關閉的舊事項。
+51. **E3.7 成本估算為估算值，非精確帳單**：以靜態檔案大小推算 token，不含對話歷史與 skill 指令本身；用途是任務間相對比較，不得宣稱為精確 API 費用。每次任務完成後必須執行並更新 budget.md。
 
 ---
 
@@ -1244,3 +1330,4 @@ Read 所有主管的 `memory.md`「部門強制規則」表格。
 | `~/.ptd/[公司]/teams/team-NNN/regulations.md` | 部門規範（品質標準 + 交付物規格 + 流程規範） | B3.5 載入，Mode E 合規檢查，Mode H 可編輯 |
 | `~/.ptd/[公司]/teams/team-NNN/skillset.md` | 部門技能庫（已持有 skill + 待申請清單） | B3.5 已持有帶入 prompt，F1 日報匯報申請，Mode H 查看 |
 | `~/.ptd/[公司]/session-state.md` | Session 還原快照（最後操作、進行中案件、待處理事項、待申請技能） | 每次 Mode 完成後覆寫；啟動時若存在且 7 天內則自動播報 |
+| `~/.ptd/[公司]/budget.md` | 累計營運成本（估算）：各任務 token 用量與 USD 費用 | E3.7 每次任務完成後更新；F3 顯示摘要；「花了多少錢」展開明細 |
