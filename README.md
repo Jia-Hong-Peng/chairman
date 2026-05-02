@@ -157,6 +157,8 @@ bash install.sh
 
 **獲利**：賺錢，或賺能換成錢的東西——名聲、流量、人氣都算。
 
+**產品**：用戶價值 > 技術炫技。快速驗證 > 完美產品。數據決策 > 感覺決策。護城河思維：為什麼別人做不到？現金流優先：訂閱、持續收費 > 一次性收入。專注一件事，做到賺錢為止。
+
 **目標**：世界最強。每位主管帶著榮譽心執行任務，HR 冷眼追蹤績效——表現不達標的主管會被裁撤。公司持續優化。
 
 ---
@@ -171,4 +173,4 @@ bash install.sh
 
 ---
 
-`v4.6.4` · MIT · [github.com/Jia-Hong-Peng/chairman](https://github.com/Jia-Hong-Peng/chairman)
+`v4.7.0` · MIT · [github.com/Jia-Hong-Peng/chairman](https://github.com/Jia-Hong-Peng/chairman)
