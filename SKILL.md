@@ -1,6 +1,6 @@
 ---
 name: chairman
-version: 4.6.4
+version: 4.7.0
 description: >
   把任何需求轉換成一個 5 人制最小完美 AI 部門。公司獨立存放於 ~/.ptd/，
   不依附任何單一專案；各專案是公司承接的案件，由對應主管負責執行。
@@ -67,13 +67,19 @@ if [ -d "$PTD_HOME" ]; then
     echo "COMPANIES: $(echo "$ALL_COS" | tr '\n' ',' | sed 's/,$//')"
     CO_COUNT=$(echo "$ALL_COS" | wc -l | tr -d ' ')
     echo "CO_COUNT: $CO_COUNT"
-    FIRST_CO=$(echo "$ALL_COS" | head -1)
-    echo "ACTIVE_CO: $FIRST_CO"
-    [ -f "$PTD_HOME/$FIRST_CO/org.md" ] && echo "HAS_ORG: yes" || echo "HAS_ORG: no"
-    [ -d "$PTD_HOME/$FIRST_CO/teams/hr" ]  && echo "HAS_HR: yes"  || echo "HAS_HR: no"
-    [ -d "$PTD_HOME/$FIRST_CO/teams/ceo" ] && echo "HAS_CEO: yes" || echo "HAS_CEO: no"
-    echo "COMPANY_DIR: $PTD_HOME/$FIRST_CO"
-    _CO_MODEL=$(grep "^\*\*引擎\*\*" "$PTD_HOME/$FIRST_CO/org.md" 2>/dev/null | sed 's/.*：//' | awk '{print $1}')
+    # 優先讀取上次切換的公司；若無 .active 或指向不存在公司則取第一個
+    ACTIVE_CO=""
+    if [ -f "$PTD_HOME/.active" ]; then
+      _SAVED=$(cat "$PTD_HOME/.active" 2>/dev/null | tr -d '[:space:]')
+      [ -d "$PTD_HOME/$_SAVED" ] && ACTIVE_CO="$_SAVED"
+    fi
+    [ -z "$ACTIVE_CO" ] && ACTIVE_CO=$(echo "$ALL_COS" | head -1)
+    echo "ACTIVE_CO: $ACTIVE_CO"
+    [ -f "$PTD_HOME/$ACTIVE_CO/org.md" ] && echo "HAS_ORG: yes" || echo "HAS_ORG: no"
+    [ -d "$PTD_HOME/$ACTIVE_CO/teams/hr" ]  && echo "HAS_HR: yes"  || echo "HAS_HR: no"
+    [ -d "$PTD_HOME/$ACTIVE_CO/teams/ceo" ] && echo "HAS_CEO: yes" || echo "HAS_CEO: no"
+    echo "COMPANY_DIR: $PTD_HOME/$ACTIVE_CO"
+    _CO_MODEL=$(grep "^\*\*引擎\*\*" "$PTD_HOME/$ACTIVE_CO/org.md" 2>/dev/null | sed 's/.*：//' | awk '{print $1}')
     [ -z "$_CO_MODEL" ] && _CO_MODEL="claude"
     echo "COMPANY_MODEL: $_CO_MODEL"
   else
@@ -104,12 +110,14 @@ echo "CURRENT_PROJECT: $CURRENT_PROJECT"
 
 若 `CO_COUNT > 1`，在抬頭後加一行小字：`（共 CO_COUNT 間公司。輸入「切換公司」可切換）`
 
-然後執行**自動進度播報**（每次必做）：
-若 `org.md` 有「執行中」的案件，以各主管暱稱播報：
+然後判斷本次意圖，**再決定是否播報進度**：
+
+- 若本次意圖為 **Mode E / C / D / G**（直接指令類），**跳過進度播報，直接執行**
+- 其他情況（新任務、Mode F、意圖不明）→ 若 `org.md` 有「執行中」的案件，先以各主管暱稱播報：
 
 > **[暱稱]** 回報：「[案件名稱] ── [目前進度 / 卡點 / 下一步]」
 
-播報完畢後，判斷本次意圖：
+播報完畢後，確認本次意圖：
 
 | 使用者意圖 | 進入模式 |
 |-----------|---------|
@@ -123,6 +131,7 @@ echo "CURRENT_PROJECT: $CURRENT_PROJECT"
 | 「我給 X 分」「我強制打 X 分」 | **Mode C：老闆強制考績** |
 | 「裁撤」「刪掉」「解散」某主管 | **Mode D：裁撤** |
 | 「修改[暱稱]」「換掉[暱稱]的角色」 | **Mode H：修改團隊** |
+| 「公司能力書」「產出公司介紹」「給客戶看的簡介」 | **Mode I：能力書** |
 
 若 `HAS_COMPANY: no` → 直接進入 **Mode A**（公司初始化）。
 
@@ -251,12 +260,13 @@ cp "$ROLES_DIR/[部門]/[角色].md" "$TEAM_DIR/roles/"
 
 **初始化 CEO（必做）**
 
-問：
+**若為願景路徑（A0 自動建立）** → CEO 暱稱全自動推導，不詢問，直接宣告：
+> **[CEO暱稱]**：「我叫「[暱稱]」。公司「[公司名]」現在開始運作。」
 
+**若為空白路徑（用戶被問了一句話後建立）** → 問一句：
 > 「這間公司的 CEO 要叫什麼暱稱？（直接 Enter 我幫你取）」
-
 - 有輸入 → 使用該名稱
-- 未輸入 → 根據 CEO 策略審查師的個性自動推導 2-4 字暱稱（例如：「老謀」「鷹眼」「問號姐」）
+- 未輸入 → 根據 CEO 策略審查師的個性自動推導 2-4 字暱稱
 
 ```bash
 mkdir -p "$COMPANY_DIR/teams/ceo/roles"
@@ -265,7 +275,7 @@ cp "$ROLES_DIR/specialized/specialized-ceo-reviewer.md" "$COMPANY_DIR/teams/ceo/
 
 寫入 `$COMPANY_DIR/teams/ceo/charter.md`（包含 CEO 暱稱、職責說明）。
 
-以模板 `references/templates/memory.md` 為基礎，Write `$COMPANY_DIR/teams/ceo/memory.md`（填入 CEO 暱稱、角色名、公司名、建立日期，保留核心驅動力）。
+以模板 `references/templates/ceo-memory.md` 為基礎，Write `$COMPANY_DIR/teams/ceo/memory.md`（填入 CEO 暱稱、公司名、建立日期，保留核心使命）。
 
 **初始化 HR 部門（必做）**
 
@@ -442,7 +452,12 @@ Edit `$COMPANY_DIR/teams/team-NNN/memory.md`：
 2. 在「任務心得」表格新增一行：本次學到最重要的一件事、下次要注意的細節
 3. 若本次評分 < 6 且同類問題已出現兩次以上 → 在「待改進項目」追加或更新該弱點條目
 
-同步 Edit `$COMPANY_DIR/teams/ceo/memory.md`，在「來自 CEO 的指示與反饋」欄記錄本次任務指派要點（一行）。
+同步 Edit `$COMPANY_DIR/teams/ceo/memory.md`，在「任務交派記錄」新增一行（主管、理由、HR 最終分數、一句檢討）。
+
+Edit `$COMPANY_DIR/teams/hr/memory.md`：
+- 在「歷次評分記錄摘要」新增一行
+- 若本次分數 < 6 → 更新「待觀察名單」
+- 更新「各主管績效趨勢觀察」該主管的趨勢欄位
 
 ### E4：墊底警告（自動觸發）
 
@@ -523,7 +538,11 @@ Read `$COMPANY_DIR/cases/` 下所有案件檔案，輸出公司業績總表：
 ## Mode S：切換公司
 
 列出 `COMPANIES` 的所有公司名稱讓使用者選擇（或直接解析「切換到[X]」指令中的名稱）。
-確認後更新 `ACTIVE_CO` 與 `COMPANY_DIR` 至新選公司，重新讀取 `org.md`，顯示新公司抬頭，回到意圖判斷。
+確認後：
+```bash
+echo "[新公司名]" > "$PTD_HOME/.active"
+```
+更新 `ACTIVE_CO` 與 `COMPANY_DIR` 至新選公司，重新讀取 `org.md`，顯示新公司抬頭，回到意圖判斷。
 
 若指定名稱不存在 → 告知可用公司清單，請使用者重新選擇。
 
@@ -554,6 +573,57 @@ Read 對應 `charter.md`，顯示目前構成（成員、評分表）。
 ### H4：同步更新 org.md
 
 確認修改後，Edit `org.md` 反映最新主管資訊（若有異動）。
+
+---
+
+## Mode I：公司能力書
+
+### I1：收集資料
+
+Read 所有主管的 `charter.md` 與 `memory.md`，取得：
+- 每位主管的核心能力與擅長任務類型
+- 歷史任務案例（含 HR 分數摘要）
+- 個人風格進化（memory.md 的「個人風格進化」欄）
+
+Read `org.md` 取得公司整體績效數字（平均分、任務數）。
+
+### I2：CEO 撰寫能力書
+
+CEO 以自己的暱稱整合輸出，格式如下：
+
+```
+🏢 [公司名稱] — AI 能力書
+
+CEO [暱稱] 出品 · [日期]
+
+─────────────────────────────────
+▌ 公司定位
+[一句話：這間公司擅長做什麼類型的任務，能幫客戶解決什麼]
+
+─────────────────────────────────
+▌ 核心團隊
+
+[主管暱稱]（[角色名]）
+核心能力：[一句話]
+代表案件：[案件名稱，HR分數 X.X]
+風格：[從 memory.md 個人風格進化提煉]
+
+[重複，每位主管各一段]
+
+─────────────────────────────────
+▌ 公司整體績效
+完成案件：[N] 件 ｜ 平均 HR 評分：[X.X] / 10
+
+─────────────────────────────────
+▌ 適合委託的任務類型
+[根據所有主管的能力組合，列出 3-5 個最適合的任務類型]
+```
+
+### I3：詢問是否儲存
+
+> 「要把這份能力書存為 `$COMPANY_DIR/company-profile.md` 嗎？」
+
+若確認 → Write 儲存。若否 → 只輸出，不寫檔。
 
 ---
 
@@ -593,20 +663,21 @@ Read 對應 `charter.md`，顯示目前構成（成員、評分表）。
 | teams/hr/charter.md | `references/templates/hr-charter.md` |
 | teams/ceo/charter.md | `references/templates/ceo-charter.md` |
 | teams/team-NNN/memory.md | `references/templates/memory.md` |
-| teams/ceo/memory.md | `references/templates/memory.md` |
+| teams/ceo/memory.md | `references/templates/ceo-memory.md` |
 | teams/hr/memory.md | `references/templates/hr-memory.md` |
+| company-profile.md | （Mode I 生成，無固定模板） |
 
 ---
 
 ## 重要限制
 
-1. **每次呼叫時**，若有「執行中」任務，必須先自動播報進度，不得省略。
+1. **進度播報智慧路由**：Mode E / C / D / G 為直接指令，跳過進度播報直接執行；其餘情況若有「執行中」任務先播報。
 2. **首次使用（HAS_COMPANY: no）必須先問快速通道或完整公司**（Mode A0），不得跳過。
 3. **Mode Q 不建立任何文件**，輸出完後才問是否升級成公司。
-4. **Mode A Step 3 必須停下來問**核心任務，不得跳過。
-5. **Mode A Step 4 必須問暱稱**，使用者不填才自動推導。
+4. **A3 僅在願景空泛時問一句**；若董事長初始訊息已含具體方向，直接跳過。
+5. **A4 CEO 自動推導主管暱稱**，直接宣告；董事長不滿意再改。
 6. **公司命名僅首次**（HAS_COMPANY: no）執行，不再重複問。
-7. **CEO 由系統自動建立**（與 HR 同時），暱稱詢問使用者，未填才自動推導。
+7. **CEO 暱稱**：願景路徑全自動推導；空白路徑問一句，未填才自動推導。
 8. **使用者在公司中的身份是董事長**，不是 CEO；所有公司抬頭顯示「董事長：你」。
 9. **Mode B 的 CEO B0 為每次必做**：CEO 接收願景、自行解讀後輸出任務簡報再交派；除非願景完全無法解讀（空白或自相矛盾），否則一律自主執行，不以任何理由向董事長追問。
 10. **所有公司文件存放於 `~/.ptd/[公司名稱]/`**，絕不寫入當前專案目錄。
@@ -621,15 +692,15 @@ Read 對應 `charter.md`，顯示目前構成（成員、評分表）。
 19. 每次建立新團隊、承接新案件後必須更新 `org.md`。
 20. 主管每完成工作流程的任何一步，必須 Edit `charter.md` 進度日誌。
 21. 進度播報必須用主管的人格與暱稱說話，不得用第三人稱系統口吻。
-22. **Mode S 只能切換到 `~/.ptd/` 下已存在的公司**，不得憑空建立。
+22. **Mode S 切換公司時必須寫入 `~/.ptd/.active`**，只能切換已存在的公司，不得憑空建立。
 23. **Mode H 修改角色時必須更新 `roles/` 子資料夾**（cp 新角色 + 可選刪除舊角色）。
 24. **每間公司有獨立引擎**，預設 `claude`；可在建立時或隨時以「把[公司名]引擎改為[X]」切換，寫入 `org.md` 的 `**引擎**` 欄位。
 25. **非 claude 引擎**：CEO 構建完整 prompt 後透過 Bash 呼叫對應 CLI，CLI 輸出即為執行結果，跳過 B1/B2 直接進 B3。
-24. **Mode Q 即使在 `HAS_COMPANY: yes` 狀態下也可觸發**（由意圖路由判斷）。
-25. **A8 只在 `HAS_CEO: no` 時執行**，不因新增第二個團隊而重複初始化 CEO/HR。
-26. **每位主管（含 CEO）建立時必須同步建立 `memory.md`**，核心驅動力段落終身存在，不得刪除或修改。
-27. **人事長使用獨立的 `hr-memory.md` 模板**，核心信條為鐵面無私 + 希望淘汰低效資源，評分時必須讀取自身記憶以保持一致性。
-28. **Mode E 評分完成後必須更新主管的 `memory.md`**（任務心得 + HR 反饋），讓主管從每次任務中真實積累學習。
+26. **Mode Q 即使在 `HAS_COMPANY: yes` 狀態下也可觸發**（由意圖路由判斷）。
+27. **A8 只在 `HAS_CEO: no` 時執行**，不因新增第二個團隊而重複初始化 CEO/HR。
+28. **每位主管（含 CEO、HR）建立時必須同步建立對應 `memory.md`**：主管用 `memory.md`，CEO 用 `ceo-memory.md`，HR 用 `hr-memory.md`。記憶核心段落終身存在，不得刪除或修改。
+29. **Mode E 評分後必須更新三份記憶**：主管的 `memory.md`（任務心得 + HR 反饋）、CEO 的 `ceo-memory.md`（交派記錄）、HR 的 `hr-memory.md`（評分摘要 + 趨勢觀察）。
+30. **多公司環境以 `~/.ptd/.active` 為當前公司依據**；Preamble 優先讀取此檔，Mode S 切換後寫入。
 
 ---
 
@@ -642,7 +713,7 @@ Read 對應 `charter.md`，顯示目前構成（成員、評分表）。
 | `references/roles/<部門>/<角色>.md` | 角色完整人格定義 | Mode A Step 6，選定角色後 |
 | `~/.ptd/[公司]/org.md` | 主管陣容、案件記錄、考績摘要 | 意圖偵測後立即讀取 |
 | `~/.ptd/[公司]/teams/ceo/charter.md` | CEO 人格與職責 | Mode B B0 確認任務前 |
-| `~/.ptd/[公司]/teams/ceo/memory.md` | CEO 記憶（榮譽驅動 + 歷史反饋） | Mode B B0 讀取，任務完成後更新 |
+| `~/.ptd/[公司]/teams/ceo/memory.md` | CEO 記憶（解讀學習 + 主管能力地圖） | Mode B B0 讀取，Mode E 後更新 |
 | `~/.ptd/[公司]/teams/team-NNN/charter.md` | 單一團隊章程與評分表 | Mode B 競標、Mode E 評分前 |
 | `~/.ptd/[公司]/teams/team-NNN/memory.md` | 主管記憶（榮譽驅動 + 學習記錄） | Mode B 競標前讀取，Mode E 後更新 |
 | `~/.ptd/[公司]/teams/team-NNN/scores.md` | 單一主管考績明細 | Mode C / E 更新考績時 |
