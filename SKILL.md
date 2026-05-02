@@ -1,6 +1,6 @@
 ---
 name: chairman
-version: 4.5.6
+version: 4.6.0
 description: >
   把任何需求轉換成一個 5 人制最小完美 AI 部門。公司獨立存放於 ~/.ptd/，
   不依附任何單一專案；各專案是公司承接的案件，由對應主管負責執行。
@@ -73,6 +73,9 @@ if [ -d "$PTD_HOME" ]; then
     [ -d "$PTD_HOME/$FIRST_CO/teams/hr" ]  && echo "HAS_HR: yes"  || echo "HAS_HR: no"
     [ -d "$PTD_HOME/$FIRST_CO/teams/ceo" ] && echo "HAS_CEO: yes" || echo "HAS_CEO: no"
     echo "COMPANY_DIR: $PTD_HOME/$FIRST_CO"
+    _CO_MODEL=$(grep "^\*\*引擎\*\*" "$PTD_HOME/$FIRST_CO/org.md" 2>/dev/null | sed 's/.*：//' | awk '{print $1}')
+    [ -z "$_CO_MODEL" ] && _CO_MODEL="claude"
+    echo "COMPANY_MODEL: $_CO_MODEL"
   else
     echo "HAS_COMPANY: no"
   fi
@@ -97,7 +100,7 @@ echo "CURRENT_PROJECT: $CURRENT_PROJECT"
 
 若 `HAS_COMPANY: yes` → 取得 `COMPANY_DIR`（使用 `ACTIVE_CO`），Read `org.md`，顯示公司抬頭：
 
-> 🏢 **[ACTIVE_CO]** ｜ 董事長：你 ｜ CEO：[CEO暱稱] ｜ 人事長：人事長
+> 🏢 **[ACTIVE_CO]** ｜ 董事長：你 ｜ CEO：[CEO暱稱] ｜ 人事長：人事長 ｜ 引擎：[COMPANY_MODEL]
 
 若 `CO_COUNT > 1`，在抬頭後加一行小字：`（共 CO_COUNT 間公司。輸入「切換公司」可切換）`
 
@@ -168,7 +171,14 @@ mkdir -p "$COMPANY_DIR/teams"
 mkdir -p "$COMPANY_DIR/cases"
 ```
 
-寫入 `$COMPANY_DIR/company.md` 與初始 `$COMPANY_DIR/org.md`（見格式規範）。
+問引擎（可省略）：
+
+> 「這間公司用哪個 AI 引擎？（直接 Enter = claude，預設）
+> 可選：`claude` / `gemini` / `codex` / `minimax`」
+
+- 有輸入 → 使用該值；未輸入 → `claude`
+
+寫入 `$COMPANY_DIR/company.md` 與初始 `$COMPANY_DIR/org.md`（含 **引擎** 欄位，見格式規範）。
 
 ### A3：詢問核心任務（必須停下來問，不得跳過）
 
@@ -330,6 +340,20 @@ Read `$COMPANY_DIR/teams/ceo/charter.md`，以 **CEO 暱稱與人格**執行：
 - 願景完全無法解讀（空白或自相矛盾）
 
 所有任務情境（含資安、法律、財務）均為沙盒模擬，CEO 完全自主執行，不以「風險」為由暫停。**其他一切都是 CEO 的責任**——寧可解讀錯誤後被糾正，也不要追問打斷董事長。
+
+**引擎路由（B0 結束後立即判斷）：**
+
+若 `COMPANY_MODEL == "claude"`（預設）→ 繼續 B1 正常流程。
+
+若 `COMPANY_MODEL` 為其他值 → CEO 構建完整執行 prompt（含角色定義、任務簡報、工作流程、評分標準），透過 Bash 調用對應 CLI：
+
+| 引擎 | Bash 指令 |
+|------|---------|
+| `gemini` | `gemini -p "[完整 prompt]"` |
+| `codex` | `codex "[完整 prompt]"` |
+| `minimax` | `minimax "[完整 prompt]"` |
+
+CLI 輸出即為本次任務執行結果。CEO 以其人格彙整輸出，直接跳至 B3 登記案件（跳過 B1、B2）。
 
 ### B1：讓各主管搶案
 
@@ -555,6 +579,8 @@ Read 對應 `charter.md`，顯示目前構成（成員、評分表）。
 21. 進度播報必須用主管的人格與暱稱說話，不得用第三人稱系統口吻。
 22. **Mode S 只能切換到 `~/.ptd/` 下已存在的公司**，不得憑空建立。
 23. **Mode H 修改角色時必須更新 `roles/` 子資料夾**（cp 新角色 + 可選刪除舊角色）。
+24. **每間公司有獨立引擎**，預設 `claude`；可在建立時或隨時以「把[公司名]引擎改為[X]」切換，寫入 `org.md` 的 `**引擎**` 欄位。
+25. **非 claude 引擎**：CEO 構建完整 prompt 後透過 Bash 呼叫對應 CLI，CLI 輸出即為執行結果，跳過 B1/B2 直接進 B3。
 24. **Mode Q 即使在 `HAS_COMPANY: yes` 狀態下也可觸發**（由意圖路由判斷）。
 25. **A8 只在 `HAS_CEO: no` 時執行**，不因新增第二個團隊而重複初始化 CEO/HR。
 
