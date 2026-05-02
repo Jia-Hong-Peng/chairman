@@ -1,6 +1,6 @@
 ---
 name: chairman
-version: 4.6.0
+version: 4.6.1
 description: >
   把任何需求轉換成一個 5 人制最小完美 AI 部門。公司獨立存放於 ~/.ptd/，
   不依附任何單一專案；各專案是公司承接的案件，由對應主管負責執行。
@@ -299,14 +299,24 @@ Edit `$COMPANY_DIR/org.md`，新增主管一行。
 2. 根據任務類型選出 5 個最合適的角色路徑
 3. 分別 Read 各角色 `.md` 文件取得人格
 
-### Q3：直接執行 5 人輸出
+### Q3：並行執行 5 人輸出
 
-不建立任何文件。直接以 5 個角色人格依序輸出：
-1. Mission Director 確認成功標準與交付物
-2. Agent Orchestrator 規定工作順序與格式
-3. Primary Executor 輸出主版本
-4. Challenger 輸出挑戰版本
-5. Judge & Synthesizer 評分 → 宣布第一名 → 輸出整合版本
+不建立任何文件。分三個階段執行：
+
+**Phase 1（串行，建立框架）**
+1. Mission Director 以角色人格輸出：確認成功標準、目標受眾、最終交付物形式
+2. Agent Orchestrator 以角色人格輸出：規定 Executor 與 Challenger 的輸出格式與長度限制
+
+**Phase 2（並行，同時派出兩個 Agent）**
+
+使用 Agent 工具同時派出：
+- **Agent A — Primary Executor**：prompt 包含「角色人格（來自 Q2 已讀的 .md）+ 任務描述 + Phase 1 框架」，輸出主版本
+- **Agent B — Challenger**：prompt 包含「角色人格（來自 Q2 已讀的 .md）+ 任務描述 + Phase 1 框架 + 明確指示：找主版本的盲點、提出差異化角度」，輸出挑戰版本
+
+兩個 Agent 同時送出，等兩份結果都回來。
+
+**Phase 3（串行，整合）**
+3. Judge & Synthesizer 收到兩份輸出 → 建立評分表（5 項，總權重 100%）→ 宣布第一名 → 輸出整合版本（保留第一名骨架，吸收另一份亮點）
 
 ### Q4：詢問是否存入公司
 
